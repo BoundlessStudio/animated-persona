@@ -1,0 +1,17 @@
+# Node
+node_modules
+npm-debug.log*
+.vscode
+*.local
+.env
+/frontend/dist
+/frontend/.vite
+
+# .NET
+/api/bin
+/api/obj
+/api/.vs
+/local.settings.json
+
+# Logs
+*.log
