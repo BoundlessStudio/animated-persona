@@ -1,4 +1,4 @@
-import axios, { type AxiosRequestHeaders } from 'axios';
+import axios from 'axios';
 import { useAuth0 } from '@auth0/auth0-react';
 import { useMemo } from 'react';
 
@@ -10,10 +10,13 @@ export function useApiClient() {
   return useMemo(() => {
     const instance = axios.create({ baseURL });
     instance.interceptors.request.use(async (config) => {
-      const token = await getAccessTokenSilently();
-      const headers = (config.headers ?? {}) as AxiosRequestHeaders;
-      headers.Authorization = `Bearer ${token}`;
-      config.headers = headers;
+      try {
+        const token = await getAccessTokenSilently();
+        config.headers?.set?.('Authorization', `Bearer ${token}`);
+      } catch (err) {
+        // Allow unauthenticated request to continue; callers can handle 401s.
+        console.warn('Unable to acquire access token', err);
+      }
       return config;
     });
     return instance;

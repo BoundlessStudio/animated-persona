@@ -37,6 +37,7 @@ const App: React.FC = () => {
   const [machine, setMachine] = React.useState<MachineInfo | undefined>();
   const [streamingLog, setStreamingLog] = React.useState('');
   const [sessionId, setSessionId] = React.useState<string | undefined>();
+  const logStreamRef = React.useRef<EventSource | null>(null);
 
   React.useEffect(() => {
     setMessages(loadMemory(user?.sub));
@@ -45,6 +46,13 @@ const App: React.FC = () => {
   React.useEffect(() => {
     persistMemory(user?.sub, messages);
   }, [messages, user?.sub]);
+
+  React.useEffect(() => {
+    return () => {
+      logStreamRef.current?.close();
+      logStreamRef.current = null;
+    };
+  }, []);
 
   const startConversation = React.useCallback(async () => {
     const response = await api.post(`${apiBase}/tavus/conversations/start`);
@@ -76,12 +84,15 @@ const App: React.FC = () => {
 
   const streamLogs = () => {
     if (!sessionId) return;
+    logStreamRef.current?.close();
     const ev = new EventSource(`${apiBase}/fly/machines/exec/stream?sessionId=${sessionId}`, { withCredentials: false });
+    logStreamRef.current = ev;
     ev.onmessage = (msg) => {
       setStreamingLog((prev) => `${prev}\n${msg.data}`.trim());
     };
     ev.onerror = () => {
       ev.close();
+      logStreamRef.current = null;
     };
   };
 
@@ -90,11 +101,9 @@ const App: React.FC = () => {
     setMessages(updated);
     const res = await api.post(`${apiBase}/agent/run`, { message: text, memory: updated });
     const agent = res.data as AgentResponse;
-    const nextMessages = [...updated, buildMessage('assistant', agent.reply)];
-    if (agent.memory) {
-      nextMessages.push(...agent.memory);
-    }
-    setMessages(nextMessages);
+    const assistantMsg = buildMessage('assistant', agent.reply);
+    const nextMessages = [...updated, assistantMsg];
+    setMessages(agent.memory ?? nextMessages);
     if (agent.sessionId) {
       setSessionId(agent.sessionId);
       setStreamingLog('');
@@ -151,7 +160,7 @@ const App: React.FC = () => {
             />
           </div>
           <div className="h-1/2 min-h-[320px]">
-            <ChatPane conversation={conversation} messages={messages} onSend={sendMessage} streamingLog={streamingLog} />
+            <ChatPane messages={messages} onSend={sendMessage} streamingLog={streamingLog} />
           </div>
         </div>
         <div className="w-[70%]">

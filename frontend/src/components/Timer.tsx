@@ -21,22 +21,30 @@ export const Timer: React.FC<TimerProps> = ({ expiresAt, onExpired }) => {
   const [expired, setExpired] = React.useState(false);
 
   React.useEffect(() => {
+    setExpired(false);
+    setRemaining('--:--');
     if (!expiresAt) return;
     const exp = new Date(expiresAt).getTime();
+    if (Number.isNaN(exp)) return;
+    let calledExpired = false;
     const tick = () => {
       const now = Date.now();
       const diff = exp - now;
       if (diff <= 0) {
         setRemaining('00:00');
-        setExpired(true);
-        onExpired?.();
+        if (!calledExpired) {
+          calledExpired = true;
+          setExpired(true);
+          onExpired?.();
+        }
         return false;
       }
       setRemaining(formatRemaining(diff));
       return true;
     };
 
-    tick();
+    const shouldContinue = tick();
+    if (!shouldContinue) return;
     const id = setInterval(() => {
       const cont = tick();
       if (!cont) {

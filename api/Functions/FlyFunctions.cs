@@ -72,7 +72,14 @@ public class FlyFunctions
                 {
                     var json = await response.Content.ReadAsStringAsync();
                     using var doc = JsonDocument.Parse(json);
-                    machineId = doc.RootElement.GetProperty("id").GetString() ?? machineId;
+                    if (doc.RootElement.TryGetProperty("id", out var idElement) && idElement.ValueKind == JsonValueKind.String)
+                    {
+                        machineId = idElement.GetString() ?? machineId;
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Fly create machine response missing string id property. Raw: {Json}", json);
+                    }
                 }
                 else
                 {

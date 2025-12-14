@@ -29,6 +29,12 @@ public class AuthMiddleware : IFunctionsWorkerMiddleware
             return;
         }
 
+        if (string.Equals(request.Method, "OPTIONS", StringComparison.OrdinalIgnoreCase))
+        {
+            await next(context);
+            return;
+        }
+
         if (!request.Headers.TryGetValues("Authorization", out var values))
         {
             await WriteUnauthorizedAsync(request, context, "Missing Authorization header");
@@ -36,14 +42,15 @@ public class AuthMiddleware : IFunctionsWorkerMiddleware
         }
 
         var bearer = values.FirstOrDefault();
-        var token = bearer?.Replace("Bearer", string.Empty, StringComparison.OrdinalIgnoreCase).Trim();
-        if (string.IsNullOrWhiteSpace(token))
+        if (!System.Net.Http.Headers.AuthenticationHeaderValue.TryParse(bearer, out var parsed) ||
+            !string.Equals(parsed.Scheme, "Bearer", StringComparison.OrdinalIgnoreCase) ||
+            string.IsNullOrWhiteSpace(parsed.Parameter))
         {
             await WriteUnauthorizedAsync(request, context, "Invalid bearer token");
             return;
         }
 
-        var principal = await _validator.ValidateAsync(token);
+        var principal = await _validator.ValidateAsync(parsed.Parameter);
         if (principal == null)
         {
             await WriteUnauthorizedAsync(request, context, "Token validation failed");

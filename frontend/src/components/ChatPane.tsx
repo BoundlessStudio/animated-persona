@@ -1,9 +1,8 @@
 import React from 'react';
-import type { Conversation, ChatMessage } from '../types';
+import type { ChatMessage } from '../types';
 import { Conversation as ConversationLayout, Transcript, PromptInput } from './ai-elements';
 
 export type ChatPaneProps = {
-  conversation?: Conversation;
   messages: ChatMessage[];
   onSend: (text: string) => Promise<void>;
   streamingLog?: string;

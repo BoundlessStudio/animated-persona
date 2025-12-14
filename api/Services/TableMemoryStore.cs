@@ -17,7 +17,15 @@ public class TableMemoryStore : IMemoryStore
 
     public async Task ClearMachineAsync(string userId)
     {
-        await _tableClient.DeleteEntityAsync(userId, "machine", ETag.All, CancellationToken.None);
+        try
+        {
+            await _tableClient.DeleteEntityAsync(userId, "machine", ETag.All, CancellationToken.None);
+        }
+        catch (RequestFailedException ex) when (ex.Status == 404)
+        {
+            // Treat missing entries as already cleared to mirror in-memory behavior
+            return;
+        }
     }
 
     public async Task<MachineInfo?> GetMachineAsync(string userId)
@@ -26,7 +34,17 @@ public class TableMemoryStore : IMemoryStore
         {
             var entity = await _tableClient.GetEntityAsync<TableEntity>(userId, "machine");
             if (entity?.Value == null) return null;
-            return JsonSerializer.Deserialize<MachineInfo>(entity.Value.GetString("Payload") ?? "{}");
+            if (!entity.Value.TryGetValue("Payload", out var payloadProp)) return null;
+            var payload = payloadProp?.ToString();
+            if (string.IsNullOrWhiteSpace(payload)) return null;
+            try
+            {
+                return JsonSerializer.Deserialize<MachineInfo>(payload);
+            }
+            catch (JsonException)
+            {
+                return null;
+            }
         }
         catch (RequestFailedException ex) when (ex.Status == 404)
         {

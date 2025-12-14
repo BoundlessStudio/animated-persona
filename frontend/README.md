@@ -9,6 +9,8 @@ Currently, two official plugins are available:
 
 ## Expanding the ESLint configuration
 
+> **Note:** The examples below rely on `import.meta.dirname`, which requires Node.js 20.11.0 or later. Ensure your runtime meets this version or adjust `tsconfigRootDir` manually for older Node versions.
+
 If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
 
 ```js
